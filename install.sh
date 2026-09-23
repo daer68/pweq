@@ -112,7 +112,9 @@ EOF
     sed "s|@BINDIR@|$bindir|g" "$SRC/data/pweq.service.in" >"$D$unitdir/pweq.service"
     chmod 644 "$D$unitdir/pweq.service"
     install -m644 "$SRC/data/pweq-reload.path" "$SRC/data/pweq-reload.service" "$D$unitdir/"
-    install -m644 "$SRC/data/$APP_ID.desktop" "$D$appsdir/$APP_ID.desktop"
+    # Absolute Exec: app launchers often don't have ~/.local/bin in their PATH.
+    sed "s|^Exec=pweq|Exec=$bindir/pweq|" "$SRC/data/$APP_ID.desktop" >"$D$appsdir/$APP_ID.desktop"
+    chmod 644 "$D$appsdir/$APP_ID.desktop"
     install -m644 "$SRC/data/$APP_ID.svg" "$D$icondir/$APP_ID.svg"
 
     if [ -n "$D" ]; then
