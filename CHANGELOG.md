@@ -6,6 +6,8 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-09-23
+
 ### Changed
 
 - Selecting the real device in a volume menu now turns its EQ off ("bypass")
@@ -36,5 +38,6 @@ All notable changes to this project are documented here. The format follows
 - systemd user units, including a path unit that reloads on preset changes.
 - `install.sh` for per-user, system-wide and staged (packaging) installs; Arch PKGBUILD.
 
-[Unreleased]: https://github.com/daer68/pweq/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/daer68/pweq/compare/v0.1.1...HEAD
+[0.1.1]: https://github.com/daer68/pweq/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/daer68/pweq/releases/tag/v0.1.0
