@@ -6,6 +6,11 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Fixed
+
+- The desktop entry now starts pweq by absolute path, so it launches from app
+  menus whose `PATH` doesn't include `~/.local/bin`.
+
 ## [0.1.0] - 2026-09-23
 
 ### Added
