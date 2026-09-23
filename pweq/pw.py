@@ -101,6 +101,14 @@ class Graph:
     def node_names(self) -> set[str]:
         return {p.get("node.name", "") for _, p in self.nodes()}
 
+    def node_serials(self) -> dict[str, int]:
+        """node.name -> object.serial.
+
+        A restarted node keeps its name but gets a new serial. Object ids are
+        not usable for this: PipeWire reuses freed ids right away.
+        """
+        return {p.get("node.name", ""): int(p.get("object.serial", -oid)) for oid, p in self.nodes()}
+
     def default_sink(self) -> str | None:
         value = self.metadata.get("default", {}).get((0, "default.audio.sink"))
         return value.get("name") if isinstance(value, dict) else None

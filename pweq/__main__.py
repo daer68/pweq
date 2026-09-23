@@ -33,6 +33,7 @@ def cmd_status() -> int:
     names = graph.node_names()
     outputs = graph.outputs()
     devices = [o.device for o in outputs]
+    bypassed = config.load_bypassed()
     live = set()
     for out in outputs:
         a = config.match(assignments, out.name, out.description)
@@ -40,9 +41,13 @@ def cmd_status() -> int:
         mark = "*" if default == out.name else " "
         line = f"{mark} {out.label}\n      {out.name}\n      preset: {a.preset if a else 'none'}"
         if a:
-            sink = chain.sink_name(chain.slug(a.name))
-            active = "active" if sink in names else "not running"
-            line += f"  [{sink}: {active}{', default' if default == sink else ''}]"
+            key = chain.slug(a.name)
+            sink = chain.sink_name(key)
+            if key in bypassed and sink in names:
+                state = "bypassed: selected without EQ; select its (EQ: …) output to re-enable"
+            else:
+                state = "active" if sink in names else "not running"
+            line += f"  [{sink}: {state}{', default' if default == sink else ''}]"
         print(line)
     for a in assignments:
         if a.name not in live:

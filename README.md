@@ -32,7 +32,8 @@ to under 1%**, which you notice in battery life.
 - **One preset per output.** Plug in headphones and their EQ applies; unplug
   and the speakers get theirs back.
 - **Follows your normal output switching.** Pick outputs in your usual volume
-  menu; pweq moves the audio through the matching EQ.
+  menu; pweq moves the audio through the matching EQ. Picking the real
+  device instead of its *(EQ: …)* entry turns the EQ off for it.
 - **AutoEQ / Equalizer APO format.** Paste a `ParametricEQ.txt` from AutoEQ or
   squig.link and you're done.
 - **Edit presets in any text editor.** Changes apply as soon as you save.
@@ -84,7 +85,9 @@ systemctl --user enable --now pweq.service pweq-reload.path
 3. Pick the preset next to the output it's for.
 
 That's it. Select outputs as you normally would; in your volume menu the
-EQ'd variant shows up as e.g. *Speaker (EQ: laptop-speakers)*.
+EQ'd variant shows up as e.g. *Speaker (EQ: laptop-speakers)*. Selecting
+plain *Speaker* instead means "no EQ" until you pick the EQ entry again or
+the device reconnects.
 
 Coming from EasyEffects? Use **menu → Import EasyEffects presets**, then see
 [Migrating from EasyEffects](docs/migrating-from-easyeffects.md).

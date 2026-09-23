@@ -45,9 +45,10 @@ output is event driven, so the daemon sleeps between events. After every change 
 2. Starts missing processes and stops ones that are no longer wanted or
    whose generated config changed (for example, a preset was edited). Only
    affected outputs restart. A crashed EQ process restarts after a 10 s backoff.
-3. If the **default output is a real output that has a running EQ**, it sets
-   the default to that EQ sink (`default.configured.audio.sink`). WirePlumber
-   then moves streams that follow the default.
+3. If the **default output is a real output that has a running EQ** and you
+   haven't bypassed it (see below), it sets the default to that EQ sink
+   (`default.configured.audio.sink`). WirePlumber then moves streams that
+   follow the default.
 
 So the flows look like this:
 
@@ -60,6 +61,25 @@ So the flows look like this:
 - **You pick an AirPlay speaker in the volume menu.** pweq moves the default
   to its EQ sink. If you pick an EQ sink directly, nothing needs to happen.
 - **Output without a preset.** pweq does nothing, and audio goes straight to it.
+
+### Turning the EQ off: pick the real output
+
+Every output with a preset shows up twice in volume menus, as the real
+device and as *Device (EQ: preset)*. Selecting the **real** one while its EQ
+sink is running means "this output, without EQ": pweq marks the output as
+*bypassed* and stops redirecting it. Selecting the *(EQ: …)* entry turns the
+EQ back on. `pweq status` and the GUI show bypassed outputs.
+
+pweq only treats a switch as your choice when nothing else explains it. That
+excludes a device that just appeared, an EQ that restarted (compared by
+`object.serial`, since PipeWire reuses object ids), and WirePlumber falling
+back because the previous default disappeared (possibly late, after a
+restarted EQ is already back under the same name). So plug-in, preset edits
+and restarts still land on the EQ.
+
+A bypass lasts until you select the EQ entry, the device disconnects, or you
+log out. It's kept in `$XDG_RUNTIME_DIR/pweq/state.json`, so it survives a
+restart of the pweq service.
 
 On stop, the daemon moves the default back from an EQ sink to its real
 output before shutting the EQ processes down, so audio never ends up on a

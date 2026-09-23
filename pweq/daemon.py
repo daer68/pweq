@@ -15,7 +15,8 @@ import signal
 import subprocess
 import sys
 import time
-from dataclasses import dataclass
+from collections.abc import Collection
+from dataclasses import dataclass, field
 
 from . import apo, chain, config, pw
 
@@ -54,10 +55,74 @@ def plan(outputs: list[pw.Output], assignments: list[config.Assignment], load_pr
     return desired
 
 
-def redirect_target(default: str | None, running: dict[str, Instance], node_names: set[str]) -> str | None:
-    """EQ sink the default should move to, if the default is an output we equalize."""
-    for inst in running.values():
-        if inst.target == default and inst.sink in node_names:
+@dataclass(frozen=True)
+class Snapshot:
+    """What the previous reconcile saw."""
+
+    default: str | None = None
+    # object.serial of the node the default named when it was set. The default
+    # is stored by name, so after a node restarts under the same name this still
+    # identifies the old node.
+    default_serial: int | None = None
+    serials: dict[str, int] = field(default_factory=dict)  # node.name -> object.serial
+
+
+def default_serial(prev: Snapshot, default: str | None, serials: dict[str, int]) -> int | None:
+    """Serial of the node the current default was set to (see Snapshot.default_serial)."""
+    if default != prev.default or prev.default_serial is None:
+        return serials.get(default)
+    return prev.default_serial
+
+
+def update_bypass(
+    bypassed: set[str],
+    running: dict[str, Instance],
+    default: str | None,
+    serials: dict[str, int],
+    prev: Snapshot,
+    retired: Collection[int] = (),
+) -> set[str]:
+    """Track outputs the user deliberately selected without EQ.
+
+    Switching the default to a real output counts as "EQ off" only when nothing
+    else explains the switch:
+    - the output and its EQ sink both existed before, the EQ sink as the same
+      node (serials are never reused, unlike ids), so it isn't a plug-in or a
+      restarted EQ;
+    - the EQ node isn't one we just stopped (`retired`): WirePlumber may switch
+      before the removal is reported;
+    - the node the previous default pointed to still exists, so it isn't
+      WirePlumber falling back after a device or EQ vanished (it may do that
+      late, after the restarted EQ is already back under the same name).
+    Selecting the EQ sink turns the EQ back on; disconnected outputs are forgotten.
+    """
+    result = bypassed & running.keys()
+    live = set(serials.values())
+    for key, inst in running.items():
+        if default == inst.sink:
+            result.discard(key)
+        elif (
+            default == inst.target
+            and default != prev.default
+            and inst.target in prev.serials
+            and inst.sink in prev.serials
+            and serials.get(inst.sink) == prev.serials[inst.sink]
+            and prev.serials[inst.sink] not in retired
+            and prev.default_serial in live
+        ):
+            result.add(key)
+    return result
+
+
+def redirect_target(
+    default: str | None,
+    running: dict[str, Instance],
+    node_names: Collection[str],
+    bypassed: Collection[str] = (),
+) -> str | None:
+    """EQ sink the default should move to, if the default is an output we equalize (and not bypassed)."""
+    for key, inst in running.items():
+        if inst.target == default and inst.sink in node_names and key not in bypassed:
             return inst.sink
     return None
 
@@ -69,6 +134,9 @@ class Daemon:
         self.failed_at: dict[str, float] = {}
         self.assignments = config.load_assignments()
         self.requested: tuple[str | None, str] | None = None  # last (default, redirect) sent
+        self.bypassed = config.load_bypassed()  # keys of outputs selected without EQ
+        self.prev = Snapshot()
+        self.retired: set[int] = set()  # serials of EQ sinks we stopped, until they leave the graph
         self.reload = False
         self.stop = False
 
@@ -85,6 +153,8 @@ class Daemon:
 
     def _stop(self, key: str) -> None:
         inst, proc = self.procs.pop(key)
+        if (serial := self.graph.node_serials().get(inst.sink)) is not None:
+            self.retired.add(serial)
         proc.terminate()
         try:
             proc.wait(timeout=3)
@@ -125,12 +195,24 @@ class Daemon:
 
         running = {k: inst for k, (inst, _) in self.procs.items()}
         default = self.graph.default_sink()
-        target = redirect_target(default, running, self.graph.node_names())
+        serials = self.graph.node_serials()
+        self.retired &= set(serials.values())
+        bypassed = update_bypass(self.bypassed, running, default, serials, self.prev, self.retired)
+        if bypassed != self.bypassed:
+            for key in bypassed - self.bypassed:
+                log(f"EQ bypassed: {running[key].target} selected without EQ")
+            for key in self.bypassed - bypassed:
+                log(f"EQ bypass cleared for {key}")
+            self.bypassed = bypassed
+            config.save_bypassed(bypassed)
+
+        target = redirect_target(default, running, serials, self.bypassed)
         # WirePlumber confirms a default change a few events later; don't repeat it.
         if target and self.requested != (default, target):
             log(f"default {default} -> {target}")
             pw.set_default_sink(target)
         self.requested = (default, target) if target else None
+        self.prev = Snapshot(default, default_serial(self.prev, default, serials), serials)
         return min(waits, default=None)
 
     def shutdown(self) -> None:
