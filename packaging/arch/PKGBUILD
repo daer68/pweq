@@ -1,0 +1,38 @@
+# Maintainer: daer68 <https://github.com/daer68>
+pkgname=pweq-git
+_pkgname=pweq
+pkgver=0.1.0
+pkgrel=1
+pkgdesc="Per-output parametric EQ for PipeWire using AutoEQ / Equalizer APO presets"
+arch=(any)
+url="https://github.com/daer68/pweq"
+license=(GPL-3.0-or-later)
+depends=(python pipewire wireplumber python-gobject gtk4 libadwaita)
+makedepends=(git)
+provides=("$_pkgname")
+conflicts=("$_pkgname")
+install=pweq.install
+source=("git+$url.git")
+sha256sums=(SKIP)
+
+pkgver() {
+    cd "$_pkgname"
+    if git describe --tags --long >/dev/null 2>&1; then
+        git describe --tags --long --abbrev=7 | sed 's/^v//;s/\([^-]*-g\)/r\1/;s/-/./g'
+    else
+        printf '0.1.0.r%s.g%s' "$(git rev-list --count HEAD)" "$(git rev-parse --short=7 HEAD)"
+    fi
+}
+
+check() {
+    cd "$_pkgname"
+    python -m unittest discover -s tests
+}
+
+package() {
+    cd "$_pkgname"
+    ./install.sh --system --prefix /usr --destdir "$pkgdir"
+    install -Dm644 LICENSE "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+    install -Dm644 README.md "$pkgdir/usr/share/doc/$pkgname/README.md"
+    cp -r docs "$pkgdir/usr/share/doc/$pkgname/"
+}

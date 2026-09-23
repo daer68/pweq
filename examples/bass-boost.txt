@@ -1,0 +1,4 @@
+# Simple bass boost. Preamp compensates for the +6 dB shelf so loud
+# passages don't clip.
+Preamp: -6.0 dB
+Filter 1: ON LSC Fc 105 Hz Gain 6.0 dB Q 0.70

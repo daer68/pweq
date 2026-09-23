@@ -1,0 +1,14 @@
+post_install() {
+    echo ":: Enable pweq for your user (not as root):"
+    echo "   systemctl --user enable --now pweq.service pweq-reload.path"
+}
+
+post_upgrade() {
+    echo ":: Restart pweq to use the new version:"
+    echo "   systemctl --user daemon-reload && systemctl --user restart pweq.service"
+}
+
+pre_remove() {
+    echo ":: Before removing, stop pweq for your user:"
+    echo "   systemctl --user disable --now pweq.service pweq-reload.path"
+}

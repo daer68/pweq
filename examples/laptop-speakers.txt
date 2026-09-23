@@ -1,0 +1,8 @@
+# Illustrative starting point for small laptop speakers, not a measured
+# correction. Cuts the lows that tiny drivers can't reproduce (less
+# distortion at high volume), tames boxiness, adds a little air.
+Preamp: -3.0 dB
+Filter 1: ON HP Fc 120 Hz Q 0.707
+Filter 2: ON PK Fc 250 Hz Gain -2.5 dB Q 1.20
+Filter 3: ON PK Fc 2500 Hz Gain 1.5 dB Q 1.00
+Filter 4: ON HSC Fc 8000 Hz Gain 3.0 dB Q 0.70

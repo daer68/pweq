@@ -1,0 +1,46 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pweq"
+dynamic = ["version"]
+description = "Per-output parametric EQ for PipeWire using AutoEQ / Equalizer APO presets"
+readme = "README.md"
+license = "GPL-3.0-or-later"
+license-files = ["LICENSE"]
+authors = [{ name = "daer68" }]
+requires-python = ">=3.10"
+# The GUI needs PyGObject with GTK 4 and libadwaita; install those from your
+# distribution (they are not reliably pip-installable). The CLI and daemon
+# only need the standard library and the PipeWire command-line tools.
+dependencies = []
+keywords = ["pipewire", "equalizer", "autoeq", "parametric-eq", "linux-audio"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: X11 Applications :: GTK",
+    "Intended Audience :: End Users/Desktop",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python :: 3",
+    "Topic :: Multimedia :: Sound/Audio",
+]
+
+[project.urls]
+Homepage = "https://github.com/daer68/pweq"
+Issues = "https://github.com/daer68/pweq/issues"
+
+[project.scripts]
+pweq = "pweq.__main__:main"
+
+[tool.setuptools]
+packages = ["pweq"]
+
+[tool.setuptools.dynamic]
+version = { attr = "pweq.__version__" }
+
+[tool.ruff]
+line-length = 120
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP"]

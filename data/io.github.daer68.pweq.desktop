@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=pweq
+GenericName=Equalizer
+Comment=Per-output parametric EQ for PipeWire
+Exec=pweq
+Icon=io.github.daer68.pweq
+Terminal=false
+Categories=AudioVideo;Audio;Settings;
+Keywords=equalizer;eq;autoeq;parametric;pipewire;audio;
+StartupNotify=true

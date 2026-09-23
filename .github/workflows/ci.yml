@@ -1,0 +1,47 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.10", "3.11", "3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Unit tests
+        run: python -m unittest discover -s tests -v
+
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: ruff
+        run: pipx run ruff check .
+      - name: shellcheck
+        run: shellcheck -s sh install.sh packaging/arch/pweq.install
+      - name: PKGBUILD syntax
+        run: bash -n packaging/arch/PKGBUILD
+
+  package:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Staged system install (same path the PKGBUILD uses)
+        run: |
+          ./install.sh --system --prefix /usr --destdir "$RUNNER_TEMP/stage"
+          test -x "$RUNNER_TEMP/stage/usr/bin/pweq"
+          grep -q 'ExecStart=/usr/bin/pweq daemon' "$RUNNER_TEMP/stage/usr/lib/systemd/user/pweq.service"
+          PYTHONPATH="$RUNNER_TEMP/stage/usr/lib/pweq" python -m pweq --version
+      - name: Build sdist and wheel
+        run: pipx run build

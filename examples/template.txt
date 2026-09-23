@@ -1,0 +1,15 @@
+# pweq preset template (Equalizer APO / AutoEQ "ParametricEQ.txt" format).
+# Lines starting with # are comments. Copy this file, edit, then:
+#   pweq import my-preset.txt
+#
+# Preamp: overall gain applied before the filters. Keep it at or below minus
+# the largest positive band gain to avoid clipping.
+Preamp: -3.0 dB
+
+# Filter N: ON|OFF  TYPE  Fc <Hz>  Gain <dB>  Q <q>
+# Types: PK (peaking), LSC/LS (low shelf), HSC/HS (high shelf),
+#        LP/LPQ (low-pass), HP/HPQ (high-pass), BP (band-pass),
+#        NO (notch), AP (all-pass). Q defaults to 0.707 if omitted.
+Filter 1: ON LSC Fc 105 Hz Gain 3.0 dB Q 0.70
+Filter 2: ON PK Fc 3000 Hz Gain -2.0 dB Q 1.40
+Filter 3: OFF HSC Fc 10000 Hz Gain 2.0 dB Q 0.70

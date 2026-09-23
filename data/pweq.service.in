@@ -1,0 +1,15 @@
+[Unit]
+Description=pweq per-output EQ (auto-follow)
+Documentation=https://github.com/daer68/pweq
+After=pipewire.service wireplumber.service
+BindsTo=pipewire.service
+
+[Service]
+ExecStart=@BINDIR@/pweq daemon
+ExecReload=/bin/kill -HUP $MAINPID
+Restart=on-failure
+RestartSec=2
+TimeoutStopSec=5
+
+[Install]
+WantedBy=pipewire.service

@@ -1,0 +1,6 @@
+[Unit]
+Description=Reload pweq configuration
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/systemctl --user try-reload-or-restart pweq.service

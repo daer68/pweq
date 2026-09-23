@@ -1,0 +1,10 @@
+[Unit]
+Description=Reload pweq when presets or assignments change
+
+[Path]
+PathChanged=%h/.config/pweq/presets
+PathChanged=%h/.config/pweq/assignments.json
+Unit=pweq-reload.service
+
+[Install]
+WantedBy=default.target
