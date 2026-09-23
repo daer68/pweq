@@ -8,6 +8,9 @@ All notable changes to this project are documented here. The format follows
 
 ### Fixed
 
+- AirPlay (RAOP) speakers were missing from the output list because PipeWire
+  marks them `node.virtual`. Processing sinks are now recognised by their
+  `node.link-group` instead.
 - The desktop entry now starts pweq by absolute path, so it launches from app
   menus whose `PATH` doesn't include `~/.local/bin`.
 

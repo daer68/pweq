@@ -100,16 +100,17 @@ class GraphTest(unittest.TestCase):
         self.g.apply(
             [
                 node(1, "alsa.speaker", "Speaker"),
-                node(2, "raop_sink.livingroom.local.1.2.3.4.7000", "Living Room"),
+                # Real RAOP sinks are virtual (boolean) and must still be listed.
+                node(2, "raop_sink.livingroom.local.1.2.3.4.7000", "Living Room", **{"node.virtual": True}),
                 node(3, "easyeffects_sink", **{"factory.name": "support.null-audio-sink"}),
                 node(4, "pweq.alsa-speaker"),
                 node(5, "spotify", cls="Stream/Output/Audio"),
-                node(6, "virt", **{"node.virtual": "true"}),
+                node(6, "effect_input.eq6", **{"node.virtual": True, "node.link-group": "filter-chain-1-2"}),
                 default_meta("alsa.speaker"),
             ]
         )
 
-    def test_outputs_exclude_virtual_and_own(self):
+    def test_outputs_keep_airplay_skip_processing_sinks(self):
         names = [o.name for o in self.g.outputs()]
         self.assertEqual(names, ["raop_sink.livingroom.local.1.2.3.4.7000", "alsa.speaker"])
 
