@@ -6,8 +6,18 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Changed
+
+- Selecting the real device in a volume menu now turns its EQ off ("bypass")
+  instead of pweq immediately switching back to the EQ sink. Selecting the
+  *(EQ: …)* entry turns it on again. Plug-in, preset edits and restarts still
+  land on the EQ. `pweq status` and the GUI show bypassed outputs.
+
 ### Fixed
 
+- AirPlay (RAOP) speakers were missing from the output list because PipeWire
+  marks them `node.virtual`. Processing sinks are now recognised by their
+  `node.link-group` instead.
 - The desktop entry now starts pweq by absolute path, so it launches from app
   menus whose `PATH` doesn't include `~/.local/bin`.
 

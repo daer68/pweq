@@ -33,6 +33,10 @@ PipeWire tools package).
 
 - Check the default output: `wpctl status` (the `*` in *Sinks*). It should be
   the `(EQ: …)` sink.
+- `pweq status` says **bypassed**: you (or a tool acting for you) selected the
+  real device, which turns its EQ off. Select the *(EQ: …)* entry in your
+  volume menu to turn it back on. See
+  [Turning the EQ off](how-it-works.md#turning-the-eq-off-pick-the-real-output).
 - An app may be pinned to a specific output (WirePlumber remembers per-app
   choices you made in pavucontrol and similar tools). Move that app to the EQ
   sink once in pavucontrol, or clear its remembered target.

@@ -115,6 +115,26 @@ def match(items: list[Assignment], name: str, description: str) -> Assignment | 
     return by_desc[0] if len(by_desc) == 1 else None
 
 
+# --- runtime state (cleared at logout/reboot) --------------------------------
+
+
+def state_path() -> Path:
+    return runtime_dir() / "state.json"
+
+
+def load_bypassed() -> set[str]:
+    """Keys of outputs the user selected without EQ (see daemon.update_bypass)."""
+    try:
+        return set(json.loads(state_path().read_text()).get("bypassed", []))
+    except (FileNotFoundError, ValueError):
+        return set()
+
+
+def save_bypassed(keys: set[str]) -> None:
+    runtime_dir().mkdir(parents=True, exist_ok=True)
+    _write_atomic(state_path(), json.dumps({"bypassed": sorted(keys)}) + "\n")
+
+
 def _write_atomic(path: Path, text: str) -> None:
     tmp = path.with_suffix(path.suffix + ".tmp")
     tmp.write_text(text)

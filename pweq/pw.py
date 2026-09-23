@@ -79,7 +79,12 @@ class Graph:
                 yield oid, (obj.get("info") or {}).get("props") or {}
 
     def outputs(self) -> list[Output]:
-        """Real audio outputs: hardware, network (AirPlay) and similar sinks."""
+        """Real audio outputs: hardware, network (AirPlay) and similar sinks.
+
+        Skips pweq's own sinks, null sinks (EasyEffects & co.) and the input side
+        of filter-chains/loopbacks, which carry a node.link-group. node.virtual
+        is not a usable signal: AirPlay (RAOP) sinks set it too.
+        """
         result = []
         for oid, p in self.nodes():
             if p.get("media.class") != "Audio/Sink":
@@ -87,7 +92,7 @@ class Graph:
             name = p.get("node.name", "")
             if name.startswith(NODE_PREFIX) or p.get("factory.name") == "support.null-audio-sink":
                 continue
-            if str(p.get("node.virtual", "false")).lower() == "true":
+            if p.get("node.link-group"):
                 continue
             device = (self.objects.get(p.get("device.id"), {}).get("info") or {}).get("props") or {}
             result.append(Output(oid, name, p.get("node.description") or name, device.get("device.description", "")))
@@ -95,6 +100,14 @@ class Graph:
 
     def node_names(self) -> set[str]:
         return {p.get("node.name", "") for _, p in self.nodes()}
+
+    def node_serials(self) -> dict[str, int]:
+        """node.name -> object.serial.
+
+        A restarted node keeps its name but gets a new serial. Object ids are
+        not usable for this: PipeWire reuses freed ids right away.
+        """
+        return {p.get("node.name", ""): int(p.get("object.serial", -oid)) for oid, p in self.nodes()}
 
     def default_sink(self) -> str | None:
         value = self.metadata.get("default", {}).get((0, "default.audio.sink"))

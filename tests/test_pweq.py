@@ -100,16 +100,17 @@ class GraphTest(unittest.TestCase):
         self.g.apply(
             [
                 node(1, "alsa.speaker", "Speaker"),
-                node(2, "raop_sink.livingroom.local.1.2.3.4.7000", "Living Room"),
+                # Real RAOP sinks are virtual (boolean) and must still be listed.
+                node(2, "raop_sink.livingroom.local.1.2.3.4.7000", "Living Room", **{"node.virtual": True}),
                 node(3, "easyeffects_sink", **{"factory.name": "support.null-audio-sink"}),
                 node(4, "pweq.alsa-speaker"),
                 node(5, "spotify", cls="Stream/Output/Audio"),
-                node(6, "virt", **{"node.virtual": "true"}),
+                node(6, "effect_input.eq6", **{"node.virtual": True, "node.link-group": "filter-chain-1-2"}),
                 default_meta("alsa.speaker"),
             ]
         )
 
-    def test_outputs_exclude_virtual_and_own(self):
+    def test_outputs_keep_airplay_skip_processing_sinks(self):
         names = [o.name for o in self.g.outputs()]
         self.assertEqual(names, ["raop_sink.livingroom.local.1.2.3.4.7000", "alsa.speaker"])
 
@@ -169,6 +170,84 @@ class PlanTest(unittest.TestCase):
         self.assertIsNone(daemon.redirect_target("alsa.speaker", plan, set()), "EQ sink not up yet")
         self.assertIsNone(daemon.redirect_target("pweq.alsa-speaker", plan, {"pweq.alsa-speaker"}))
         self.assertIsNone(daemon.redirect_target("alsa.hdmi", plan, {"pweq.alsa-hdmi"}))
+
+
+class BypassTest(unittest.TestCase):
+    """daemon.update_bypass: manual choice of the real output turns the EQ off."""
+
+    HP, EQ, SPK = "alsa.hp", "pweq.alsa-hp", "alsa.spk"
+
+    def setUp(self):
+        self.running = {"alsa-hp": daemon.Instance("alsa-hp", self.HP, "conf")}
+
+    def update(self, default, serials, prev, bypassed=frozenset(), retired=()):
+        return daemon.update_bypass(set(bypassed), self.running, default, serials, prev, retired)
+
+    def snap(self, default, serials, default_serial=None):
+        return daemon.Snapshot(default, serials.get(default) if default_serial is None else default_serial, serials)
+
+    def test_user_selects_real_output_from_eq_sink(self):
+        s = {self.HP: 1, self.EQ: 2}
+        self.assertEqual(self.update(self.HP, s, self.snap(self.EQ, s)), {"alsa-hp"})
+
+    def test_user_selects_real_output_from_other_device(self):
+        s = {self.HP: 1, self.EQ: 2, self.SPK: 3}
+        self.assertEqual(self.update(self.HP, s, self.snap(self.SPK, s)), {"alsa-hp"})
+
+    def test_eq_restart_with_late_fallback_is_not_a_bypass(self):
+        # Seen live: EQ restarts (serial 2 -> 9), the new node is already up
+        # when WirePlumber finally moves the default off the old one.
+        before = {self.HP: 1, self.EQ: 9}
+        prev = daemon.Snapshot(self.EQ, 2, before)  # default was set when the EQ node was serial 2
+        self.assertEqual(self.update(self.HP, before, prev), set())
+
+    def test_eq_restart_with_early_fallback_is_not_a_bypass(self):
+        prev_s = {self.HP: 1, self.EQ: 2}
+        now = {self.HP: 1, self.EQ: 7}
+        self.assertEqual(self.update(self.HP, now, self.snap(self.EQ, prev_s)), set())
+
+    def test_switch_before_removal_of_stopped_eq_is_not_a_bypass(self):
+        s = {self.HP: 1, self.EQ: 2}
+        self.assertEqual(self.update(self.HP, s, self.snap(self.EQ, s), retired={2}), set())
+
+    def test_plug_in_is_not_a_bypass(self):
+        prev_s = {self.SPK: 3, "pweq.alsa-spk": 4}
+        now = {**prev_s, self.HP: 1}
+        self.assertEqual(self.update(self.HP, now, self.snap("pweq.alsa-spk", prev_s)), set())
+
+    def test_fallback_after_default_vanished_is_not_a_bypass(self):
+        prev_s = {self.HP: 1, self.EQ: 2, "raop.room": 5}
+        now = {self.HP: 1, self.EQ: 2}
+        self.assertEqual(self.update(self.HP, now, self.snap("raop.room", prev_s)), set())
+
+    def test_selecting_eq_sink_clears_and_unplug_forgets(self):
+        s = {self.HP: 1, self.EQ: 2}
+        self.assertEqual(self.update(self.EQ, s, self.snap(self.HP, s), {"alsa-hp"}), set())
+        self.running = {}
+        self.assertEqual(self.update(None, {}, self.snap(self.HP, s), {"alsa-hp"}), set())
+
+    def test_bypass_sticks_and_blocks_redirect(self):
+        s = {self.HP: 1, self.EQ: 2}
+        self.assertEqual(self.update(self.HP, s, self.snap(self.HP, s), {"alsa-hp"}), {"alsa-hp"})
+        self.assertIsNone(daemon.redirect_target(self.HP, self.running, s, {"alsa-hp"}))
+        self.assertEqual(daemon.redirect_target(self.HP, self.running, s), self.EQ)
+
+    def test_default_serial_tracks_the_node_the_default_was_set_to(self):
+        prev = daemon.Snapshot(self.EQ, 2, {self.EQ: 2})
+        self.assertEqual(daemon.default_serial(prev, self.EQ, {self.EQ: 9}), 2)  # same name, restarted node
+        self.assertEqual(daemon.default_serial(prev, self.HP, {self.HP: 1}), 1)  # default changed
+        self.assertEqual(daemon.default_serial(daemon.Snapshot(), self.HP, {self.HP: 1}), 1)  # startup
+
+    def test_node_serials_prefer_object_serial(self):
+        g = pw.Graph()
+        g.apply([node(81, self.EQ, **{"object.serial": 1009}), node(5, self.HP)])
+        self.assertEqual(g.node_serials(), {self.EQ: 1009, self.HP: -5})
+
+    def test_state_roundtrip(self):
+        with tempfile.TemporaryDirectory() as d, mock.patch.dict(os.environ, {"XDG_RUNTIME_DIR": d}):
+            self.assertEqual(config.load_bypassed(), set())
+            config.save_bypassed({"b", "a"})
+            self.assertEqual(config.load_bypassed(), {"a", "b"})
 
 
 class ConfigTest(unittest.TestCase):

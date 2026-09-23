@@ -130,11 +130,14 @@ class Window(Adw.ApplicationWindow):
         if not connected:
             parts.append("not connected")
         if a:
-            sink = chain.sink_name(chain.slug(a.name))
+            key = chain.slug(a.name)
+            sink = chain.sink_name(key)
             if a.preset not in presets:
                 parts.append("preset missing")
             elif sink == default:
                 parts.append("EQ active, default output")
+            elif sink in names and key in config.load_bypassed():
+                parts.append("EQ off (selected without EQ; pick its “EQ” output to re-enable)")
             elif sink in names:
                 parts.append("EQ ready")
             elif connected:
